@@ -31,7 +31,7 @@ type Codec struct {
 	Key []byte
 }
 
-// NewEncryptionDataConverter creates a new instance of EncryptionDataConverter wrapping a DataConverter
+// NewEncryptionDataConverter creates a new instance of EncryptionDataConverter wrapping a DataConverter.
 func NewEncryptionDataConverter(dataConverter converter.DataConverter, options EncryptionOptions) (*EncryptionDataConverter, error) {
 	byteKey, err := base64.StdEncoding.DecodeString(options.Key)
 	if err != nil {
@@ -87,7 +87,7 @@ func (e *Codec) Encode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error
 func (e *Codec) Decode(payloads []*commonpb.Payload) ([]*commonpb.Payload, error) {
 	result := make([]*commonpb.Payload, len(payloads))
 	for i, p := range payloads {
-		// Only if it's encrypted
+		// Only if it's encrypted.
 		if string(p.Metadata[converter.MetadataEncoding]) != MetadataEncodingEncrypted {
 			result[i] = p
 			continue

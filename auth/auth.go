@@ -20,7 +20,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const groupScope = "https://www.googleapis.com/auth/admin.directory.group.readonly"
+const (
+	candidProvider string = "candid"
+	googleProvider string = "google"
+	groupScope     string = "https://www.googleapis.com/auth/admin.directory.group.readonly"
+)
 
 // MacaroonHeadersProvider implements go.temporal.io/sdk/client/internal.HeadersProvider
 // to customize the authorization header when connecting to Temporal instance
@@ -28,8 +32,7 @@ const groupScope = "https://www.googleapis.com/auth/admin.directory.group.readon
 type MacaroonHeadersProvider struct {
 	bakeryClient *httpbakery.Client
 	authOptions  *MacaroonAuthOptions
-
-	// Ms holds the discharged macaroon in memory while it's still valid (not
+	// ms holds the discharged macaroon in memory while it's still valid (not
 	// expired).
 	ms macaroon.Slice
 	mu sync.Mutex
@@ -39,17 +42,17 @@ type MacaroonHeadersProvider struct {
 // to customize the authorization header when connecting to Temporal instance
 // backed up by Google IAM auth.
 type GoogleHeadersProvider struct {
-	authOptions  *GoogleAuthOptions
-
+	authOptions *GoogleAuthOptions
 	// token holds the access token in memory while it's still valid (not expired).
 	token *oauth2.Token
+	mu    sync.Mutex
 }
 
 // AuthOptions represents the necessary data to create a HeadersProvider for
 // authentication and authorization using supported auth providers.
 type AuthOptions struct {
 	Provider string
-	Config any
+	Config   any
 }
 
 // MacaroonAuthOptions represents the necessary data to create a HeadersProvider for
@@ -67,15 +70,25 @@ type MacaroonAuthOptions struct {
 // GoogleAuthOptions represents the necessary data to create a HeadersProvider for
 // authentication and authorization using Google IAM.
 type GoogleAuthOptions struct {
+	// The type of authentication. Typically "service_account".
 	Type string `yaml:"type"`
+	// The Google Cloud project ID.
 	ProjectID string `yaml:"project_id"`
+	// The private key ID.
 	PrivateKeyID string `yaml:"private_key_id"`
+	// The private key associated with the service account.
 	PrivateKey string `yaml:"private_key"`
+	// The client email associated with the service account.
 	ClientEmail string `yaml:"client_email"`
+	// The client ID associated with the service account.
 	ClientID string `yaml:"client_id"`
+	// The authentication URI.
 	AuthURI string `yaml:"auth_uri"`
+	// The token URI.
 	TokenURI string `yaml:"token_uri"`
+	// The URL of the authentication provider's x.509 certificate.
 	AuthProviderCertURL string `yaml:"auth_provider_x509_cert_url"`
+	// The URL of the client's x.509 certificate.
 	ClientCertURL string `yaml:"client_x509_cert_url"`
 }
 
@@ -90,7 +103,7 @@ func (h *GoogleHeadersProvider) GetHeaders(ctx context.Context) (map[string]stri
 	if err != nil {
 		return nil, errgo.Mask(err)
 	}
-	
+
 	return map[string]string{"authorization": "Bearer " + token.AccessToken}, nil
 }
 
@@ -101,6 +114,9 @@ func (h *GoogleHeadersProvider) GetHeaders(ctx context.Context) (map[string]stri
 // subsequent calls to this function do not perform an auth dance every single
 // time.
 func (h *GoogleHeadersProvider) getGoogleAccessToken(ctx context.Context) (*oauth2.Token, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if h.token != nil && h.token.Valid() {
 		return h.token, nil
 	}
@@ -201,33 +217,36 @@ func (h *MacaroonHeadersProvider) getDischargedMacaroon(ctx context.Context) (ma
 	return h.ms, nil
 }
 
+// NewAuthHeadersProvider creates an implementation of the HeadersProvider
+// interface based on the provided AuthOptions.
 func NewAuthHeadersProvider(opts *AuthOptions) (HeadersProvider, error) {
 	structBytes, err := yaml.Marshal(opts.Config)
 	if err != nil {
 		return nil, errgo.Mask(err)
 	}
 
-	if opts.Provider == "candid" {
+	if opts.Provider == candidProvider {
 		macaroonHeadersProvider, err := NewMacaroonHeadersProvider(structBytes)
 		if err != nil {
 			return nil, errgo.Mask(err)
 		}
 
 		return macaroonHeadersProvider, nil
-	} 
-	
-	if opts.Provider == "google" {
+	}
+
+	if opts.Provider == googleProvider {
 		googleHeadersProvider, err := NewGoogleHeadersProvider(structBytes)
 		if err != nil {
 			return nil, errgo.Mask(err)
 		}
 
-		return googleHeadersProvider, nil		
+		return googleHeadersProvider, nil
 	}
 
-	return nil, errgo.Mask(errors.New("auth provider not supported. please specify candid or google"))
+	return nil, errgo.Mask(errors.New("auth provider not supported. please specify 'candid' or 'google'"))
 }
 
+// NewMacaroonHeadersProvider returns a new MacaroonHeadersProvider instance.
 func NewMacaroonHeadersProvider(configBytes []byte) (HeadersProvider, error) {
 	var macaroonOpts MacaroonAuthOptions
 	if err := yaml.Unmarshal(configBytes, &macaroonOpts); err != nil {
@@ -241,6 +260,7 @@ func NewMacaroonHeadersProvider(configBytes []byte) (HeadersProvider, error) {
 	}, nil
 }
 
+// NewGoogleheadersProvider returns a new GoogleHeadersProvider instance.
 func NewGoogleHeadersProvider(configBytes []byte) (HeadersProvider, error) {
 	var googleOpts GoogleAuthOptions
 	if err := yaml.Unmarshal(configBytes, &googleOpts); err != nil {
@@ -248,10 +268,11 @@ func NewGoogleHeadersProvider(configBytes []byte) (HeadersProvider, error) {
 	}
 
 	return &GoogleHeadersProvider{
-		authOptions:  &googleOpts,
+		authOptions: &googleOpts,
 	}, nil
 }
 
+// convertYAMLStructToEncodedJSON converts a YAML-encoded struct to JSON.
 func convertYAMLStructToEncodedJSON(s interface{}) ([]byte, error) {
 	yamlValue, err := yaml.Marshal(s)
 	if err != nil {
