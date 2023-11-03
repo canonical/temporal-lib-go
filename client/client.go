@@ -36,7 +36,6 @@ func (t *Options) GetTLSRootCAs() (*x509.CertPool, error) {
 // Dial offers a wrapper over Temporal SDK's Dial() that offers Candid auth,
 // Google auth and encryption readily available, if enabled through the options.
 func Dial(options Options) (client.Client, error) {
-
 	hostPort := strings.Split(options.HostPort, ":")
 	// If no port is specified, assume default TLS HTTP port.
 	if len(hostPort) == 1 {

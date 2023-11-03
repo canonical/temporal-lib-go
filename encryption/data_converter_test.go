@@ -4,12 +4,11 @@ import (
 	"testing"
 
 	"github.com/canonical/temporal-lib-go/encryption"
-
-	"github.com/stretchr/testify/require"
+	"github.com/go-quicktest/qt"
 	"go.temporal.io/sdk/converter"
 )
 
-func Test_DataConverter(t *testing.T) {
+func TestDataConverter(t *testing.T) {
 	defaultDc := converter.GetDefaultDataConverter()
 
 	cryptDc, err := encryption.NewEncryptionDataConverter(
@@ -18,19 +17,21 @@ func Test_DataConverter(t *testing.T) {
 			Key: "HLCeMJLLiyLrUOukdThNgRfyraIXZk918rtp5VX/uwI=",
 		},
 	)
-	require.NoError(t, err)
+	qt.Assert(t, qt.IsNil(err))
 
 	defaultPayloads, err := defaultDc.ToPayloads("Testing")
-	require.NoError(t, err)
+	qt.Assert(t, qt.IsNil(err))
 
 	encryptedPayloads, err := cryptDc.ToPayloads("Testing")
-	require.NoError(t, err)
+	qt.Assert(t, qt.IsNil(err))
 
-	require.NotEqual(t, defaultPayloads.Payloads[0].GetData(), encryptedPayloads.Payloads[0].GetData())
+	qt.Assert(t, qt.Not(qt.Equals(
+		defaultPayloads.Payloads[0].GetData(),
+		encryptedPayloads.Payloads[0].GetData(),
+	)))
 
 	var result string
 	err = cryptDc.FromPayloads(encryptedPayloads, &result)
-	require.NoError(t, err)
-
-	require.Equal(t, "Testing", result)
+	qt.Assert(t, qt.IsNil(err))
+	qt.Assert(t, qt.Equals("Testing", result))
 }

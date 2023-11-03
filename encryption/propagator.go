@@ -9,32 +9,32 @@ import (
 
 type (
 	// contextKey is an unexported type used as key for items stored in the
-	// Context object
+	// Context object.
 	contextKey struct{}
 
-	// propagator implements the custom context propagator
+	// propagator implements the custom context propagator.
 	propagator struct{}
 
-	// CryptContext is a struct holding values
+	// CryptContext is a struct holding values.
 	CryptContext struct {
 		Key string `json:"key"`
 	}
 )
 
-// PropagateKey is the key used to store the value in the Context object
+// PropagateKey is the key used to store the value in the Context object.
 var PropagateKey = contextKey{}
 
 // propagationKey is the key used by the propagator to pass values through the
-// Temporal server headers
+// Temporal server headers.
 const propagationKey = "encryption"
 
 // NewContextPropagator returns a context propagator that propagates a set of
-// string key-value pairs across a workflow
+// string key-value pairs across a workflow.
 func NewContextPropagator() workflow.ContextPropagator {
 	return &propagator{}
 }
 
-// Inject injects values from context into headers for propagation
+// Inject injects values from context into headers for propagation.
 func (s *propagator) Inject(ctx context.Context, writer workflow.HeaderWriter) error {
 	value := ctx.Value(PropagateKey)
 	payload, err := converter.GetDefaultDataConverter().ToPayload(value)
@@ -45,7 +45,7 @@ func (s *propagator) Inject(ctx context.Context, writer workflow.HeaderWriter) e
 	return nil
 }
 
-// InjectFromWorkflow injects values from context into headers for propagation
+// InjectFromWorkflow injects values from context into headers for propagation.
 func (s *propagator) InjectFromWorkflow(ctx workflow.Context, writer workflow.HeaderWriter) error {
 	value := ctx.Value(PropagateKey)
 	payload, err := converter.GetDefaultDataConverter().ToPayload(value)
@@ -56,7 +56,7 @@ func (s *propagator) InjectFromWorkflow(ctx workflow.Context, writer workflow.He
 	return nil
 }
 
-// Extract extracts values from headers and puts them into context
+// Extract extracts values from headers and puts them into context.
 func (s *propagator) Extract(ctx context.Context, reader workflow.HeaderReader) (context.Context, error) {
 	if value, ok := reader.Get(propagationKey); ok {
 		var cryptContext CryptContext
@@ -69,7 +69,7 @@ func (s *propagator) Extract(ctx context.Context, reader workflow.HeaderReader) 
 	return ctx, nil
 }
 
-// ExtractToWorkflow extracts values from headers and puts them into context
+// ExtractToWorkflow extracts values from headers and puts them into context.
 func (s *propagator) ExtractToWorkflow(ctx workflow.Context, reader workflow.HeaderReader) (workflow.Context, error) {
 	if value, ok := reader.Get(propagationKey); ok {
 		var cryptContext CryptContext
