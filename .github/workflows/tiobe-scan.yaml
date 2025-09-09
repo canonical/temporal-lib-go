@@ -1,0 +1,32 @@
+name: Tiobe TICS Analysis
+
+on:
+  workflow_dispatch:
+  pull_request:
+  schedule:
+    - cron: "17 2 * * 1"
+
+jobs:
+  tics-scan:
+    runs-on: [self-hosted, linux, amd64, tiobe, jammy]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # tiny sanity check 
+      - run: go version
+
+      - name: Run TICS analysis
+        uses: tiobe/tics-github-action@v3
+        with:
+          viewerUrl: https://canonical.tiobe.com/tiobeweb/TICS/api/cfg?name=GoProjects
+          mode: qserver
+          project: temporal-lib-go
+          branchdir: .
+          ticsAuthToken: ${{ secrets.TICSAUTHTOKEN }}
+          installTics: true
+          nocalc: UNITTESTCOVERAGE
