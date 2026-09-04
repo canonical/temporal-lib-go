@@ -36,6 +36,28 @@ func (t *Options) GetTLSRootCAs() (*x509.CertPool, error) {
 // Dial offers a wrapper over Temporal SDK's Dial() that offers Candid auth,
 // Google auth and encryption readily available, if enabled through the options.
 func Dial(options Options) (client.Client, error) {
+	clientOptions, err := configureOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.Dial(clientOptions)
+}
+
+// NewLazyClient offers a wrapper over Temporal SDK's NewLazyClient() that
+// offers Candid auth, Google auth and encryption readily available, if enabled
+// through the options. Unlike Dial, this will not eagerly connect to the
+// server.
+func NewLazyClient(options Options) (client.Client, error) {
+	clientOptions, err := configureOptions(options)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewLazyClient(clientOptions)
+}
+
+func configureOptions(options Options) (client.Options, error) {
 	hostPort := strings.Split(options.HostPort, ":")
 	// If no port is specified, assume default TLS HTTP port.
 	if len(hostPort) == 1 {
@@ -48,7 +70,7 @@ func Dial(options Options) (client.Client, error) {
 	if options.Auth != nil {
 		hp, err := auth.NewAuthHeadersProvider(options.Auth)
 		if err != nil {
-			return nil, err
+			return client.Options{}, err
 		}
 		options.HeadersProvider = hp
 	}
@@ -60,7 +82,7 @@ func Dial(options Options) (client.Client, error) {
 			*options.Encryption,
 		)
 		if err != nil {
-			return nil, err
+			return client.Options{}, err
 		}
 		options.ContextPropagators = []workflow.ContextPropagator{encryption.NewContextPropagator()}
 	}
@@ -68,7 +90,7 @@ func Dial(options Options) (client.Client, error) {
 	if options.TLSRootCAs != "" {
 		rootCA, err := options.GetTLSRootCAs()
 		if err != nil {
-			return nil, err
+			return client.Options{}, err
 		}
 		serverName := hostPort[0]
 		options.ConnectionOptions.TLS = &tls.Config{
@@ -77,5 +99,5 @@ func Dial(options Options) (client.Client, error) {
 		}
 	}
 
-	return client.Dial(options.Options)
+	return options.Options, nil
 }
