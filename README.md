@@ -28,6 +28,15 @@ func main() {
 In order to add authorization and encryption capabilities to this client we
 replace the connect call as follows:
 
+### Choosing a client constructor
+
+Use `client.Dial` when Temporal availability is required during application
+startup. It connects immediately and fails fast if Temporal is unavailable.
+
+Use `client.NewLazyClient` when the application should be able to start while
+Temporal is temporarily unavailable. It validates the client configuration and
+defers connecting to the Temporal server until required.
+
 ### Candid-based authorization
 
 ```go
