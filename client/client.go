@@ -21,7 +21,10 @@ type Options struct {
 	Queue      string                        `yaml:"queue"`
 	Auth       *auth.AuthOptions             `yaml:"auth"`
 	Encryption *encryption.EncryptionOptions `yaml:"encryption"`
-	TLSRootCAs string                        `yaml:"tls_root_cas"`
+	TLSConfig  *tls.Config                   `yaml:"-"`
+	// TLSRootCAs is a PEM encoded string containing one or more root CA
+	// certificates for TLS verification. It is ignored if TLSConfig is set.
+	TLSRootCAs string `yaml:"tls_root_cas"`
 }
 
 func (t *Options) GetTLSRootCAs() (*x509.CertPool, error) {
@@ -87,7 +90,12 @@ func configureOptions(options Options) (client.Options, error) {
 		options.ContextPropagators = []workflow.ContextPropagator{encryption.NewContextPropagator()}
 	}
 
-	if options.TLSRootCAs != "" {
+	if options.TLSConfig != nil {
+		// New approach: TLS is configured via the application directly.
+		options.ConnectionOptions.TLS = options.TLSConfig
+	} else if options.TLSRootCAs != "" {
+		// Old approach: TLS is enabled in a more opinionated manner by setting
+		// the TLS root CAs directly.
 		rootCA, err := options.GetTLSRootCAs()
 		if err != nil {
 			return client.Options{}, err
