@@ -165,6 +165,17 @@ tls_root_cas: |
   'base64 certificate'
 ```
 
+## TLS configuration
+
+The examples above use `TLSRootCAs` to enable TLS, which requires pinning the
+root CA to enable TLS. This method can be enabled with YAML configuration
+parsing or directly when constructing `client.Options` in your Go code.
+
+Alternatively, you can configure TLS directly using the `TLSConfig` field via
+your Go code (but not via YAML configuration parsing), and it allows for more
+flexibility in TLS configuration while also not requiring the pinning the root
+CA. Setting `TLSConfig` will cause `TLSRootCAs` to be ignored.
+
 ## Samples
 
 More examples of workflows using this library can be found here:
